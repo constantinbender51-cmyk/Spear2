@@ -206,29 +206,55 @@ def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
                 continue 
 
         if position == 0:
-            p_min = min(prev_c, current_c)
-            p_max = max(prev_c, current_c)
+            # === CHANGED: Use High/Low for Entry Detection ===
+            # Detect Short signal: Price went ABOVE prev_c to hit a line (wick up)
+            # Detect Long signal: Price went BELOW prev_c to hit a line (wick down)
             
-            idx_start = np.searchsorted(lines, p_min, side='right')
-            idx_end = np.searchsorted(lines, p_max, side='right')
+            found_short = False
+            short_price = 0.0
             
-            crossed_lines = lines[idx_start:idx_end]
-            
-            if len(crossed_lines) > 0:
-                target_line = 0.0
-                new_pos = 0
+            # Check for lines between prev_c and current_h (Short Candidates)
+            if current_h > prev_c:
+                idx_s = np.searchsorted(lines, prev_c, side='right')   # First line > prev_c
+                idx_e = np.searchsorted(lines, current_h, side='right') # Lines <= current_h
+                potential_shorts = lines[idx_s:idx_e]
                 
-                if current_c > prev_c: 
-                    target_line = crossed_lines[0]
-                    new_pos = -1
-                elif current_c < prev_c:
-                    target_line = crossed_lines[-1]
-                    new_pos = 1
+                if len(potential_shorts) > 0:
+                    found_short = True
+                    short_price = potential_shorts[0] # The line closest to prev_c (first crossed going up)
+
+            found_long = False
+            long_price = 0.0
+            
+            # Check for lines between current_l and prev_c (Long Candidates)
+            if current_l < prev_c:
+                idx_s = np.searchsorted(lines, current_l, side='left') # First line >= current_l
+                idx_e = np.searchsorted(lines, prev_c, side='left')    # Lines < prev_c
+                potential_longs = lines[idx_s:idx_e]
                 
-                if new_pos != 0:
-                    position = new_pos
-                    entry_price = target_line
-                    trades.append({'time': ts, 'type': 'Short' if position == -1 else 'Long', 'price': entry_price, 'pnl': 0, 'equity': equity, 'reason': 'Entry'})
+                if len(potential_longs) > 0:
+                    found_long = True
+                    long_price = potential_longs[-1] # The line closest to prev_c (first crossed going down)
+
+            # Execution Decision
+            target_line = 0.0
+            new_pos = 0
+            
+            # If both directions triggered (Outside Bar), assume direction of the Close
+            if found_short and found_long:
+                if current_c > prev_c:
+                    new_pos = -1; target_line = short_price
+                else:
+                    new_pos = 1; target_line = long_price
+            elif found_short:
+                new_pos = -1; target_line = short_price
+            elif found_long:
+                new_pos = 1; target_line = long_price
+            
+            if new_pos != 0:
+                position = new_pos
+                entry_price = target_line
+                trades.append({'time': ts, 'type': 'Short' if position == -1 else 'Long', 'price': entry_price, 'pnl': 0, 'equity': equity, 'reason': 'Entry'})
 
         equity_curve.append(equity)
 
@@ -524,27 +550,46 @@ def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, tra
                 continue
 
         if live_position == 0:
-            p_min = min(prev_close, current_c)
-            p_max = max(prev_close, current_c)
+            # === CHANGED: Use High/Low for Entry Detection ===
+            found_short = False
+            short_price = 0.0
             
-            idx_start = np.searchsorted(lines, p_min, side='right')
-            idx_end = np.searchsorted(lines, p_max, side='right')
-            crossed_lines = lines[idx_start:idx_end]
+            if current_h > prev_close:
+                idx_s = np.searchsorted(lines, prev_close, side='right')
+                idx_e = np.searchsorted(lines, current_h, side='right')
+                potential_shorts = lines[idx_s:idx_e]
+                if len(potential_shorts) > 0:
+                    found_short = True
+                    short_price = potential_shorts[0]
+
+            found_long = False
+            long_price = 0.0
             
-            if len(crossed_lines) > 0:
-                target_line = 0.0
-                new_pos = 0
+            if current_l < prev_close:
+                idx_s = np.searchsorted(lines, current_l, side='left')
+                idx_e = np.searchsorted(lines, prev_close, side='left')
+                potential_longs = lines[idx_s:idx_e]
+                if len(potential_longs) > 0:
+                    found_long = True
+                    long_price = potential_longs[-1]
+
+            target_line = 0.0
+            new_pos = 0
+            
+            if found_short and found_long:
                 if current_c > prev_close:
-                    target_line = crossed_lines[0]
-                    new_pos = -1
-                elif current_c < prev_close:
-                    target_line = crossed_lines[-1]
-                    new_pos = 1
+                    new_pos = -1; target_line = short_price
+                else:
+                    new_pos = 1; target_line = long_price
+            elif found_short:
+                new_pos = -1; target_line = short_price
+            elif found_long:
+                new_pos = 1; target_line = long_price
                 
-                if new_pos != 0:
-                    live_position = new_pos
-                    live_entry_price = target_line
-                    live_trades.append({'time': ts, 'type': 'Short' if live_position == -1 else 'Long', 'price': live_entry_price, 'pnl': 0, 'equity': live_equity, 'reason': 'Entry'})
+            if new_pos != 0:
+                live_position = new_pos
+                live_entry_price = target_line
+                live_trades.append({'time': ts, 'type': 'Short' if live_position == -1 else 'Long', 'price': live_entry_price, 'pnl': 0, 'equity': live_equity, 'reason': 'Entry'})
 
         prev_close = current_c
         with REPORT_LOCK:
