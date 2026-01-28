@@ -18,7 +18,7 @@ from deap import base, creator, tools, algorithms
 # --- Configuration ---
 BASE_DATA_URL = "https://ohlcendpoint.up.railway.app/data"
 PORT = 8080
-N_LINES = 4
+N_LINES = 8
 POPULATION_SIZE = 160
 GENERATIONS = 5
 RISK_FREE_RATE = 0.0
