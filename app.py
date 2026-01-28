@@ -110,6 +110,8 @@ def get_data(csv_filename):
 # --- 3. Strategy Logic ---
 def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
     closes = df['close'].values
+    highs = df['high'].values
+    lows = df['low'].values
     times = df.index
     
     equity = 10000.0
@@ -125,6 +127,8 @@ def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
     
     for i in range(1, len(df)):
         current_c = closes[i]
+        current_h = highs[i]
+        current_l = lows[i]
         prev_c = closes[i-1]
         ts = times[i]
         
@@ -169,17 +173,21 @@ def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
             if position == 1: # Long Logic
                 sl_price = entry_price * (1 - stop_pct)
                 tp_price = entry_price * (1 + profit_pct)
-                if current_c <= sl_price:
+                
+                # Check Low for SL, High for TP
+                if current_l <= sl_price:
                     sl_hit = True; exit_price = sl_price 
-                elif current_c >= tp_price:
+                elif current_h >= tp_price:
                     tp_hit = True; exit_price = tp_price
 
             elif position == -1: # Short Logic
                 sl_price = entry_price * (1 + stop_pct)
                 tp_price = entry_price * (1 - profit_pct)
-                if current_c >= sl_price:
+                
+                # Check High for SL, Low for TP
+                if current_h >= sl_price:
                     sl_hit = True; exit_price = sl_price
-                elif current_c <= tp_price:
+                elif current_l <= tp_price:
                     tp_hit = True; exit_price = tp_price
             
             if sl_hit or tp_hit:
@@ -392,12 +400,14 @@ def fetch_binance_candle(symbol_pair):
         if len(data) >= 2:
             kline = data[-2] 
             ts = pd.to_datetime(kline[0], unit='ms')
+            high_price = float(kline[2])
+            low_price = float(kline[3])
             close_price = float(kline[4])
-            return ts, close_price
-        return None, None
+            return ts, close_price, high_price, low_price
+        return None, None, None, None
     except Exception as e:
         print(f"[{symbol_pair}] Binance API Error: {e}")
-        return None, None
+        return None, None, None, None
 
 def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, train_df, test_df, train_curve, test_curve, test_trades, hourly_log):
     
@@ -431,13 +441,13 @@ def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, tra
         
         time.sleep(sleep_sec)
         
-        ts, current_c = fetch_binance_candle(pair)
+        ts, current_c, current_h, current_l = fetch_binance_candle(pair)
         
         if current_c is None:
             print(f"[{symbol}] Failed to fetch data. Skipping.")
             continue
             
-        print(f"[{symbol}] Processing {ts} Close: {current_c}")
+        print(f"[{symbol}] Processing {ts} Close: {current_c} High: {current_h} Low: {current_l}")
         
         idx = np.searchsorted(lines, current_c)
         val_below = lines[idx-1] if idx > 0 else -999.0
@@ -477,16 +487,19 @@ def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, tra
             if live_position == 1:
                 sl_price = live_entry_price * (1 - stop_pct)
                 tp_price = live_entry_price * (1 + profit_pct)
-                if current_c <= sl_price:
+                # Use candle High/Low for exit checks
+                if current_l <= sl_price:
                     sl_hit = True; exit_price = sl_price
-                elif current_c >= tp_price:
+                elif current_h >= tp_price:
                     tp_hit = True; exit_price = tp_price
+
             elif live_position == -1:
                 sl_price = live_entry_price * (1 + stop_pct)
                 tp_price = live_entry_price * (1 - profit_pct)
-                if current_c >= sl_price:
+                # Use candle High/Low for exit checks
+                if current_h >= sl_price:
                     sl_hit = True; exit_price = sl_price
-                elif current_c <= tp_price:
+                elif current_l <= tp_price:
                     tp_hit = True; exit_price = tp_price
             
             if sl_hit or tp_hit:
