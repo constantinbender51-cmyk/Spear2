@@ -22,7 +22,7 @@ N_LINES = 21
 POPULATION_SIZE = 40
 GENERATIONS = 10
 RISK_FREE_RATE = 0.0
-MAX_ASSETS_TO_OPTIMIZE = 3  # Limit the number of assets processed by GA
+MAX_ASSETS_TO_OPTIMIZE = 1  # Limit the number of assets processed by GA
 
 # Ranges
 STOP_PCT_RANGE = (0.001, 0.02)   # 0.1% to 2%
