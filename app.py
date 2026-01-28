@@ -290,7 +290,7 @@ def generate_report(symbol, best_ind, train_data, test_data, train_curve, test_c
     # 2. Full Price Action
     plt.subplot(2, 1, 2)
     plt.title(f"{symbol} Test Set Price Action & Grid Lines")
-    plt.plot(test_data.index, test_data['close'], color='black', alpha=0.6, label='Price', linewidth=0.8)
+    plt.plot(test_data.index, test_data['close'], color='black', alpha=1, label='Price', linewidth=0.8)
     
     lines = best_ind[2:]
     min_test = test_data['low'].min()
