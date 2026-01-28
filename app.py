@@ -19,7 +19,7 @@ from deap import base, creator, tools, algorithms
 BASE_DATA_URL = "https://ohlcendpoint.up.railway.app/data"
 PORT = 8080
 N_LINES = 21
-POPULATION_SIZE = 40
+POPULATION_SIZE = 80
 GENERATIONS = 20
 RISK_FREE_RATE = 0.0
 MAX_ASSETS_TO_OPTIMIZE = 1  # Limit the number of assets processed by GA
@@ -336,7 +336,7 @@ def generate_report(symbol, best_ind, train_data, test_data, train_curve, test_c
     <head>
         <title>{symbol} Strategy Results</title>
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-        <meta http-equiv="refresh" content="30"> 
+        <meta http-equiv="refresh" content="3000"> 
         <style>body {{ padding: 20px; }} h3 {{ margin-top: 30px; }} th {{ position: sticky; top: 0; background: white; }}</style>
     </head>
     <body>
