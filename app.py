@@ -18,9 +18,9 @@ from deap import base, creator, tools, algorithms
 # --- Configuration ---
 BASE_DATA_URL = "https://ohlcendpoint.up.railway.app/data"
 PORT = 8080
-N_LINES = 21
-POPULATION_SIZE = 80
-GENERATIONS = 20
+N_LINES = 1
+POPULATION_SIZE = 40
+GENERATIONS = 10
 RISK_FREE_RATE = 0.0
 MAX_ASSETS_TO_OPTIMIZE = 1  # Limit the number of assets processed by GA
 
