@@ -22,6 +22,7 @@ N_LINES = 200
 POPULATION_SIZE = 40
 GENERATIONS = 10
 RISK_FREE_RATE = 0.0
+MAX_ASSETS_TO_OPTIMIZE = 3  # Limit the number of assets processed by GA
 
 # Ranges
 STOP_PCT_RANGE = (0.001, 0.02)   # 0.1% to 2%
@@ -671,7 +672,11 @@ if __name__ == "__main__":
     
     # Process assets sequentially for GA to avoid massive CPU contention,
     # then spawn threads for live waiting.
-    for asset in ASSETS:
+    
+    # --- Limit number of assets processed based on Global config ---
+    assets_to_process = ASSETS[:MAX_ASSETS_TO_OPTIMIZE]
+    
+    for asset in assets_to_process:
         process_asset(asset)
     
     print("\nAll assets processed. Starting Web Server...")
