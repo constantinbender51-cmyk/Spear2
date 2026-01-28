@@ -174,9 +174,10 @@ def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
                 sl_price = entry_price * (1 - stop_pct)
                 tp_price = entry_price * (1 + profit_pct)
                 
-                # Check Low for SL, High for TP
+                # Check Low for SL first (Conservative Assumption)
                 if current_l <= sl_price:
                     sl_hit = True; exit_price = sl_price 
+                # Check High for TP
                 elif current_h >= tp_price:
                     tp_hit = True; exit_price = tp_price
 
@@ -184,9 +185,10 @@ def run_backtest(df, stop_pct, profit_pct, lines, detailed_log_trades=0):
                 sl_price = entry_price * (1 + stop_pct)
                 tp_price = entry_price * (1 - profit_pct)
                 
-                # Check High for SL, Low for TP
+                # Check High for SL first (Conservative Assumption)
                 if current_h >= sl_price:
                     sl_hit = True; exit_price = sl_price
+                # Check Low for TP
                 elif current_l <= tp_price:
                     tp_hit = True; exit_price = tp_price
             
@@ -403,7 +405,7 @@ def fetch_binance_candle(symbol_pair):
             high_price = float(kline[2])
             low_price = float(kline[3])
             close_price = float(kline[4])
-            return ts, close_price, high_price, low_price
+            return ts, high_price, low_price, close_price
         return None, None, None, None
     except Exception as e:
         print(f"[{symbol_pair}] Binance API Error: {e}")
@@ -441,13 +443,13 @@ def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, tra
         
         time.sleep(sleep_sec)
         
-        ts, current_c, current_h, current_l = fetch_binance_candle(pair)
+        ts, current_h, current_l, current_c = fetch_binance_candle(pair)
         
         if current_c is None:
             print(f"[{symbol}] Failed to fetch data. Skipping.")
             continue
             
-        print(f"[{symbol}] Processing {ts} Close: {current_c} High: {current_h} Low: {current_l}")
+        print(f"[{symbol}] Processing {ts} Close: {current_c}")
         
         idx = np.searchsorted(lines, current_c)
         val_below = lines[idx-1] if idx > 0 else -999.0
@@ -487,18 +489,22 @@ def live_trading_daemon(symbol, pair, best_ind, initial_equity, start_price, tra
             if live_position == 1:
                 sl_price = live_entry_price * (1 - stop_pct)
                 tp_price = live_entry_price * (1 + profit_pct)
-                # Use candle High/Low for exit checks
+                
+                # Check Low for SL first
                 if current_l <= sl_price:
                     sl_hit = True; exit_price = sl_price
+                # Check High for TP
                 elif current_h >= tp_price:
                     tp_hit = True; exit_price = tp_price
-
+                    
             elif live_position == -1:
                 sl_price = live_entry_price * (1 + stop_pct)
                 tp_price = live_entry_price * (1 - profit_pct)
-                # Use candle High/Low for exit checks
+                
+                # Check High for SL first
                 if current_h >= sl_price:
                     sl_hit = True; exit_price = sl_price
+                # Check Low for TP
                 elif current_l <= tp_price:
                     tp_hit = True; exit_price = tp_price
             
